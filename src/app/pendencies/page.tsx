@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, Table as TableIcon, LayoutGrid, Layers, CreditCard } from 'lucide-react';
 import { PendencyTable } from '@/components/pendencies/PendencyTable';
 import { PendencyCardList } from '@/components/pendencies/PendencyCardList';
@@ -12,13 +13,9 @@ import { usePendencies } from '@/hooks/usePendencies';
 import { useUserName } from '@/hooks/useUserName';
 import { PendencyDashboardView } from '@/lib/types';
 
-interface Props {
-  searchParams?: Promise<{ search?: string }>;
-}
-
-export default function AllPendenciesPage({ searchParams }: Props) {
-  const resolvedSearchParams = searchParams ? use(searchParams) : undefined;
-  const initialSearchQuery = resolvedSearchParams?.search || '';
+function PendenciesContent() {
+  const searchParams = useSearchParams();
+  const initialSearchQuery = searchParams.get('search') || '';
 
   const { userName } = useUserName();
   const {
@@ -150,5 +147,13 @@ export default function AllPendenciesPage({ searchParams }: Props) {
       {/* Global Floating Action Button (FAB) */}
       <FAB onClick={() => setIsCreateOpen(true)} />
     </div>
+  );
+}
+
+export default function AllPendenciesPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading register...</div>}>
+      <PendenciesContent />
+    </Suspense>
   );
 }

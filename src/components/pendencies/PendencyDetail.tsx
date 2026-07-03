@@ -44,6 +44,8 @@ export function PendencyDetail({
 }: Props) {
   const [activeTab, setActiveTab] = useState<'form' | 'timeline' | 'comments' | 'attachments'>('form');
   const [formData, setFormData] = useState<Partial<PendencyDashboardView>>({});
+  const [towerInput, setTowerInput] = useState('');
+  const [typeInput, setTypeInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const { comments, addComment } = useComments(pendency?.id || null);
@@ -53,6 +55,8 @@ export function PendencyDetail({
   useEffect(() => {
     if (pendency) {
       setFormData(pendency);
+      setTowerInput(pendency.tower_name || '');
+      setTypeInput(pendency.type_name || '');
     }
   }, [pendency]);
 
@@ -62,14 +66,46 @@ export function PendencyDetail({
     e.preventDefault();
     setIsSaving(true);
 
+    // Resolve or Auto-create Tower
+    let targetTowerId = formData.tower_id;
+    if (towerInput.trim() && towerInput.trim().toLowerCase() !== (pendency.tower_name || '').toLowerCase()) {
+      const matched = towers.find((t) => t.name.toLowerCase() === towerInput.trim().toLowerCase());
+      if (matched) {
+        targetTowerId = matched.id;
+      } else {
+        const { data: newTower } = await supabase
+          .from('towers')
+          .insert({ project_id: pendency.project_id, name: towerInput.trim() })
+          .select()
+          .single();
+        if (newTower) targetTowerId = newTower.id;
+      }
+    }
+
+    // Resolve or Auto-create Type
+    let targetTypeId = formData.type_id;
+    if (typeInput.trim() && typeInput.trim().toLowerCase() !== (pendency.type_name || '').toLowerCase()) {
+      const matched = types.find((tp) => tp.name.toLowerCase() === typeInput.trim().toLowerCase());
+      if (matched) {
+        targetTypeId = matched.id;
+      } else {
+        const { data: newType } = await supabase
+          .from('pendency_types')
+          .insert({ name: typeInput.trim() })
+          .select()
+          .single();
+        if (newType) targetTypeId = newType.id;
+      }
+    }
+
     const closedOn = formData.status === 'closed' ? (formData.closed_on || new Date().toISOString().split('T')[0]) : null;
 
     const { error } = await supabase
       .from('pendencies')
       .update({
         department_id: formData.department_id,
-        tower_id: formData.tower_id,
-        type_id: formData.type_id,
+        tower_id: targetTowerId,
+        type_id: targetTypeId,
         criticality: formData.criticality,
         status: formData.status,
         description: formData.description,
@@ -117,7 +153,7 @@ export function PendencyDetail({
                 {pendency.description}
               </h3>
               <span className="text-[11px] text-muted-foreground">
-                {pendency.department_name} • {pendency.tower_name}
+                {pendency.department_name} • {towerInput || pendency.tower_name}
               </span>
             </div>
           </div>
@@ -238,35 +274,43 @@ export function PendencyDetail({
                 </div>
 
                 <div>
-                  <label className="block font-medium text-muted-foreground mb-1">Tower / Location</label>
-                  <select
-                    value={formData.tower_id || ''}
-                    onChange={(e) => setFormData({ ...formData, tower_id: e.target.value })}
+                  <label className="block font-medium text-muted-foreground mb-1">
+                    Location / Tower <span className="text-[10px] text-primary">(Text with suggestions)</span>
+                  </label>
+                  <input
+                    type="text"
+                    list="edit-tower-suggestions"
+                    placeholder="Location / Tower name..."
+                    value={towerInput}
+                    onChange={(e) => setTowerInput(e.target.value)}
                     className="w-full p-2 rounded-lg border border-input bg-background text-foreground"
-                  >
+                  />
+                  <datalist id="edit-tower-suggestions">
                     {towers.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
+                      <option key={t.id} value={t.name} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-muted-foreground mb-1">Pendency Type</label>
-                  <select
-                    value={formData.type_id || ''}
-                    onChange={(e) => setFormData({ ...formData, type_id: e.target.value })}
+                  <label className="block font-medium text-muted-foreground mb-1">
+                    Pendency Type <span className="text-[10px] text-primary">(Text with suggestions)</span>
+                  </label>
+                  <input
+                    type="text"
+                    list="edit-type-suggestions"
+                    placeholder="Pendency type..."
+                    value={typeInput}
+                    onChange={(e) => setTypeInput(e.target.value)}
                     className="w-full p-2 rounded-lg border border-input bg-background text-foreground"
-                  >
+                  />
+                  <datalist id="edit-type-suggestions">
                     {types.map((tp) => (
-                      <option key={tp.id} value={tp.id}>
-                        {tp.name}
-                      </option>
+                      <option key={tp.id} value={tp.name} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
 
                 <div>

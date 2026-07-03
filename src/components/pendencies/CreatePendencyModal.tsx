@@ -28,53 +28,63 @@ export function CreatePendencyModal({
 }: Props) {
   const [formData, setFormData] = useState({
     project_id: projects[0]?.id || '',
-    tower_id: towers[0]?.id || '',
+    tower_name: '',
     department_id: departments[0]?.id || '',
-    type_id: types[0]?.id || '',
+    type_name: '',
     criticality: 'critical' as Criticality,
     description: '',
     current_cbe_date: '',
     status_remarks: '',
   });
 
-  const [isAddingNewType, setIsAddingNewType] = useState(false);
-  const [newTypeName, setNewTypeName] = useState('');
-  const [localTypes, setLocalTypes] = useState<PendencyType[]>(types);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Sync types prop
-  React.useEffect(() => {
-    setLocalTypes(types);
-  }, [types]);
-
   if (!isOpen) return null;
-
-  const handleAddNewTypeInline = async () => {
-    if (!newTypeName.trim()) return;
-    const { data, error } = await supabase
-      .from('pendency_types')
-      .insert({ name: newTypeName.trim() })
-      .select()
-      .single();
-
-    if (!error && data) {
-      setLocalTypes((prev) => [...prev, data as PendencyType]);
-      setFormData((prev) => ({ ...prev, type_id: data.id }));
-      setNewTypeName('');
-      setIsAddingNewType(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.description.trim()) return;
 
     setIsSubmitting(true);
+    const defaultProject = projects[0] || { id: 'c0000000-0000-0000-0000-000000000001', name: 'Woods' };
+
+    // 1. Resolve or Create Tower from text input
+    let targetTowerId = towers[0]?.id;
+    const towerInputStr = formData.tower_name.trim() || 'General';
+    const matchedTower = towers.find((t) => t.name.toLowerCase() === towerInputStr.toLowerCase());
+
+    if (matchedTower) {
+      targetTowerId = matchedTower.id;
+    } else {
+      const { data: newTower } = await supabase
+        .from('towers')
+        .insert({ project_id: defaultProject.id, name: towerInputStr })
+        .select()
+        .single();
+      if (newTower) targetTowerId = newTower.id;
+    }
+
+    // 2. Resolve or Create Pendency Type from text input
+    let targetTypeId = types[0]?.id;
+    const typeInputStr = formData.type_name.trim() || 'General';
+    const matchedType = types.find((tp) => tp.name.toLowerCase() === typeInputStr.toLowerCase());
+
+    if (matchedType) {
+      targetTypeId = matchedType.id;
+    } else {
+      const { data: newType } = await supabase
+        .from('pendency_types')
+        .insert({ name: typeInputStr })
+        .select()
+        .single();
+      if (newType) targetTypeId = newType.id;
+    }
+
     const result = await onCreate({
-      project_id: formData.project_id || projects[0]?.id,
-      tower_id: formData.tower_id || towers[0]?.id,
+      project_id: defaultProject.id,
+      tower_id: targetTowerId,
       department_id: formData.department_id || departments[0]?.id,
-      type_id: formData.type_id || localTypes[0]?.id,
+      type_id: targetTypeId,
       criticality: formData.criticality,
       description: formData.description.trim(),
       current_cbe_date: formData.current_cbe_date || null,
@@ -86,9 +96,9 @@ export function CreatePendencyModal({
       onClose();
       setFormData({
         project_id: projects[0]?.id || '',
-        tower_id: towers[0]?.id || '',
+        tower_name: '',
         department_id: departments[0]?.id || '',
-        type_id: localTypes[0]?.id || '',
+        type_name: '',
         criticality: 'critical',
         description: '',
         current_cbe_date: '',
@@ -147,65 +157,43 @@ export function CreatePendencyModal({
             </div>
 
             <div>
-              <label className="block font-medium text-muted-foreground mb-1">Tower / Location</label>
-              <select
-                value={formData.tower_id}
-                onChange={(e) => setFormData({ ...formData, tower_id: e.target.value })}
+              <label className="block font-medium text-muted-foreground mb-1">
+                Location / Tower <span className="text-[10px] text-primary">(Text with suggestions)</span>
+              </label>
+              <input
+                type="text"
+                list="tower-suggestions"
+                placeholder="Type or select location (e.g. Phase 3 Tower 10)..."
+                value={formData.tower_name}
+                onChange={(e) => setFormData({ ...formData, tower_name: e.target.value })}
                 className="w-full p-2 rounded-lg border border-input bg-background text-foreground"
-              >
+              />
+              <datalist id="tower-suggestions">
                 {towers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
+                  <option key={t.id} value={t.name} />
                 ))}
-              </select>
+              </datalist>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="font-medium text-muted-foreground">Pendency Type</label>
-                <button
-                  type="button"
-                  onClick={() => setIsAddingNewType(!isAddingNewType)}
-                  className="text-[10px] text-primary hover:underline font-semibold"
-                >
-                  {isAddingNewType ? 'Cancel' : '+ New Type'}
-                </button>
-              </div>
-
-              {isAddingNewType ? (
-                <div className="flex items-center gap-1">
-                  <input
-                    type="text"
-                    placeholder="Type name..."
-                    value={newTypeName}
-                    onChange={(e) => setNewTypeName(e.target.value)}
-                    className="w-full p-1.5 text-xs rounded border border-primary bg-background"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddNewTypeInline}
-                    className="p-1.5 rounded bg-primary text-primary-foreground font-bold"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <select
-                  value={formData.type_id}
-                  onChange={(e) => setFormData({ ...formData, type_id: e.target.value })}
-                  className="w-full p-2 rounded-lg border border-input bg-background text-foreground"
-                >
-                  {localTypes.map((tp) => (
-                    <option key={tp.id} value={tp.id}>
-                      {tp.name}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <label className="block font-medium text-muted-foreground mb-1">
+                Pendency Type <span className="text-[10px] text-primary">(Text with suggestions)</span>
+              </label>
+              <input
+                type="text"
+                list="type-suggestions"
+                placeholder="Type or select type (e.g. Drawing approval)..."
+                value={formData.type_name}
+                onChange={(e) => setFormData({ ...formData, type_name: e.target.value })}
+                className="w-full p-2 rounded-lg border border-input bg-background text-foreground"
+              />
+              <datalist id="type-suggestions">
+                {types.map((tp) => (
+                  <option key={tp.id} value={tp.name} />
+                ))}
+              </datalist>
             </div>
 
             <div>

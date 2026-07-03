@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { User, Sun, Moon, RefreshCw, Download, ShieldCheck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { User, Sun, Moon, RefreshCw, Download, ShieldCheck, Search } from 'lucide-react';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 
@@ -20,7 +21,9 @@ export function Header({
   onManualRefresh,
   isSyncing,
 }: Props) {
+  const router = useRouter();
   const [isDark, setIsDark] = useState(false);
+  const [globalQuery, setGlobalQuery] = useState('');
   const { isInstallable, promptInstall } = usePWAInstall();
 
   useEffect(() => {
@@ -40,6 +43,13 @@ export function Header({
     }
   };
 
+  const handleGlobalSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (globalQuery.trim()) {
+      router.push(`/pendencies?search=${encodeURIComponent(globalQuery.trim())}`);
+    }
+  };
+
   const formatLastSync = (date: Date | null) => {
     if (!date) return 'Not synced';
     const now = new Date();
@@ -51,24 +61,35 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-border bg-card px-4 shadow-2xs">
-      {/* Left Title & Brand Logo */}
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-border bg-card px-4 shadow-2xs gap-3">
+      {/* Left Brand & Logo */}
+      <div className="flex items-center gap-3 shrink-0">
         <div className="flex items-center gap-2.5 font-semibold text-base text-foreground">
-          {/* Minimal Logo: Letter P in Orange Circle */}
           <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-extrabold text-sm shadow-xs select-none">
             P
           </div>
-          <span>Woods Pendency</span>
+          <span className="hidden sm:inline">Woods Pendency</span>
         </div>
-        <span className="hidden md:inline-block h-4 w-px bg-border" />
-        <span className="hidden md:inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+        <span className="hidden lg:inline-block h-4 w-px bg-border" />
+        <span className="hidden lg:inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Internal App
         </span>
       </div>
 
+      {/* Global Header Search Bar */}
+      <form onSubmit={handleGlobalSearch} className="relative flex-1 max-w-md hidden md:block">
+        <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Global search pendencies across project..."
+          value={globalQuery}
+          onChange={(e) => setGlobalQuery(e.target.value)}
+          className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </form>
+
       {/* Right Actions */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2 shrink-0">
         {/* PWA Install Button */}
         {isInstallable && (
           <button
@@ -77,7 +98,7 @@ export function Header({
             title="Install app to desktop / home screen"
           >
             <Download className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Install App</span>
+            <span className="hidden sm:inline">Install</span>
           </button>
         )}
 
@@ -89,7 +110,7 @@ export function Header({
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-primary' : ''}`} />
-          <span className="hidden sm:inline">{formatLastSync(lastSyncedAt)}</span>
+          <span className="hidden lg:inline">{formatLastSync(lastSyncedAt)}</span>
         </button>
 
         {/* Notification Bell */}
@@ -114,7 +135,7 @@ export function Header({
             {userName.charAt(0).toUpperCase()}
           </div>
           <div className="flex flex-col text-left">
-            <span className="text-xs font-medium text-foreground max-w-[120px] truncate">
+            <span className="text-xs font-medium text-foreground max-w-[100px] truncate">
               {userName}
             </span>
             <span className="text-[10px] text-muted-foreground -mt-0.5">Not you?</span>

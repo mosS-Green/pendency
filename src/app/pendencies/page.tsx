@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { Plus, Table as TableIcon, LayoutGrid, Layers, CreditCard } from 'lucide-react';
 import { PendencyTable } from '@/components/pendencies/PendencyTable';
 import { PendencyCardList } from '@/components/pendencies/PendencyCardList';
@@ -12,7 +12,14 @@ import { usePendencies } from '@/hooks/usePendencies';
 import { useUserName } from '@/hooks/useUserName';
 import { PendencyDashboardView } from '@/lib/types';
 
-export default function AllPendenciesPage() {
+interface Props {
+  searchParams?: Promise<{ search?: string }>;
+}
+
+export default function AllPendenciesPage({ searchParams }: Props) {
+  const resolvedSearchParams = searchParams ? use(searchParams) : undefined;
+  const initialSearchQuery = resolvedSearchParams?.search || '';
+
   const { userName } = useUserName();
   const {
     pendencies,
@@ -105,6 +112,7 @@ export default function AllPendenciesPage() {
           onUpdateRemarks={(id, remarks) => updateRemarks(id, remarks, userName)}
           onSelectPendency={(item) => setSelectedPendency(item)}
           onRefreshNeeded={refetch}
+          initialSearch={initialSearchQuery}
         />
       ) : (
         <KanbanBoard

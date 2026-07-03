@@ -17,6 +17,7 @@ import { DepartmentChart } from '@/components/dashboard/DepartmentChart';
 import { CriticalityChart } from '@/components/dashboard/CriticalityChart';
 import { TrendChart } from '@/components/dashboard/TrendChart';
 import { AttentionList } from '@/components/dashboard/AttentionList';
+import { DepartmentKanban } from '@/components/dashboard/DepartmentKanban';
 import { PendencyDetail } from '@/components/pendencies/PendencyDetail';
 import { CreatePendencyModal } from '@/components/pendencies/CreatePendencyModal';
 import { FAB } from '@/components/layout/FAB';
@@ -64,7 +65,6 @@ export default function DashboardPage() {
     const monthsMap: Record<string, { month: string; opened: number; closed: number }> = {};
     const now = new Date();
 
-    // Generate past 6 month buckets
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -178,6 +178,12 @@ export default function DashboardPage() {
           colorClass="text-purple-600"
         />
       </div>
+
+      {/* Department Board Section (C&P, C&B collated, Design) */}
+      <DepartmentKanban
+        data={pendencies}
+        onSelectItem={(item) => setSelectedItem(item)}
+      />
 
       {/* Main Charts & Attention Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

@@ -5,12 +5,14 @@ import { DEPARTMENT_SLUGS } from '@/lib/departmentSlugs';
 import { usePendencies } from '@/hooks/usePendencies';
 import { useUserName } from '@/hooks/useUserName';
 import { PendencyTable } from '@/components/pendencies/PendencyTable';
+import { PendencyCardList } from '@/components/pendencies/PendencyCardList';
 import { KanbanBoard } from '@/components/pendencies/KanbanBoard';
 import { PendencyDetail } from '@/components/pendencies/PendencyDetail';
 import { CreatePendencyModal } from '@/components/pendencies/CreatePendencyModal';
 import { SummaryCard } from '@/components/dashboard/SummaryCard';
+import { FAB } from '@/components/layout/FAB';
 import { PendencyDashboardView } from '@/lib/types';
-import { Building2, Table as TableIcon, LayoutGrid, AlertTriangle, CheckCircle2, Plus, Clock } from 'lucide-react';
+import { Building2, Table as TableIcon, LayoutGrid, AlertTriangle, CheckCircle2, Plus, Clock, CreditCard } from 'lucide-react';
 
 interface Props {
   slug: string;
@@ -34,7 +36,7 @@ export function DepartmentView({ slug }: Props) {
     createPendency,
   } = usePendencies();
 
-  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const [viewMode, setViewMode] = useState<'cards' | 'table' | 'kanban'>('cards');
   const [selectedItem, setSelectedItem] = useState<PendencyDashboardView | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -58,7 +60,7 @@ export function DepartmentView({ slug }: Props) {
   }, [deptPendencies]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Header Banner */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div>
@@ -72,10 +74,18 @@ export function DepartmentView({ slug }: Props) {
 
         <div className="flex items-center gap-2">
           {/* View Mode Toggle */}
-          <div className="inline-flex rounded-lg border border-border bg-card p-0.5 text-xs">
+          <div className="inline-flex rounded-lg border border-border bg-card p-0.5 text-xs font-medium">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md transition-colors ${
+                viewMode === 'cards' ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground'
+              }`}
+            >
+              <CreditCard className="w-3.5 h-3.5" /> Cards
+            </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md font-medium transition-colors ${
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md transition-colors ${
                 viewMode === 'table' ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground'
               }`}
             >
@@ -83,7 +93,7 @@ export function DepartmentView({ slug }: Props) {
             </button>
             <button
               onClick={() => setViewMode('kanban')}
-              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md font-medium transition-colors ${
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md transition-colors ${
                 viewMode === 'kanban' ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground'
               }`}
             >
@@ -133,7 +143,14 @@ export function DepartmentView({ slug }: Props) {
       </div>
 
       {/* View Content */}
-      {viewMode === 'table' ? (
+      {viewMode === 'cards' ? (
+        <PendencyCardList
+          items={deptPendencies}
+          onSelectItem={(item) => setSelectedItem(item)}
+          onUpdateCBE={(id, date) => updateCBEDate(id, date, userName)}
+          onUpdateStatus={(id, status) => updateStatus(id, status, userName)}
+        />
+      ) : viewMode === 'table' ? (
         <PendencyTable
           data={deptPendencies}
           loading={loading}
@@ -156,7 +173,7 @@ export function DepartmentView({ slug }: Props) {
         />
       )}
 
-      {/* Detail Slide-over */}
+      {/* Detail Floating Form Window */}
       {selectedItem && (
         <PendencyDetail
           pendency={selectedItem}
@@ -180,6 +197,9 @@ export function DepartmentView({ slug }: Props) {
         userName={userName}
         onCreate={(record) => createPendency({ ...record, department_id: departments.find((d) => d.name === deptName)?.id }, userName)}
       />
+
+      {/* Floating Action Button */}
+      <FAB onClick={() => setIsCreateOpen(true)} />
     </div>
   );
 }

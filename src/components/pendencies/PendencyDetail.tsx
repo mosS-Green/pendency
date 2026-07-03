@@ -12,9 +12,10 @@ import {
   Send,
   UploadCloud,
   FileText,
-  Building,
   User,
   Clock,
+  Layers,
+  Building,
 } from 'lucide-react';
 import { PendencyDashboardView, Department, Tower, PendencyType } from '@/lib/types';
 import { CBETimeline } from './CBETimeline';
@@ -41,14 +42,12 @@ export function PendencyDetail({
   userName,
   onSaved,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<'details' | 'timeline' | 'comments' | 'attachments'>('details');
+  const [activeTab, setActiveTab] = useState<'form' | 'timeline' | 'comments' | 'attachments'>('form');
   const [formData, setFormData] = useState<Partial<PendencyDashboardView>>({});
   const [isSaving, setIsSaving] = useState(false);
 
-  // Hook for comments & attachments
   const { comments, addComment } = useComments(pendency?.id || null);
   const { attachments, uploading, uploadAttachment } = useAttachments(pendency?.id || null);
-
   const [newCommentText, setNewCommentText] = useState('');
 
   useEffect(() => {
@@ -63,6 +62,8 @@ export function PendencyDetail({
     e.preventDefault();
     setIsSaving(true);
 
+    const closedOn = formData.status === 'closed' ? (formData.closed_on || new Date().toISOString().split('T')[0]) : null;
+
     const { error } = await supabase
       .from('pendencies')
       .update({
@@ -74,6 +75,7 @@ export function PendencyDetail({
         description: formData.description,
         current_cbe_date: formData.current_cbe_date || null,
         status_remarks: formData.status_remarks || null,
+        closed_on: closedOn,
         updated_by: userName,
         updated_at: new Date().toISOString(),
       })
@@ -99,70 +101,133 @@ export function PendencyDetail({
     }
   };
 
+  const isClosed = formData.status === 'closed';
+
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/40 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
-      <div className="w-full max-w-xl bg-card border-l border-border h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
-        {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between bg-muted/30">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-primary/10 text-primary">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-3 md:p-6 animate-in fade-in duration-200 overflow-y-auto">
+      <div className="w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl flex flex-col my-auto max-h-[92vh] overflow-hidden">
+        {/* Floating Window Header */}
+        <div className="px-5 py-3.5 border-b border-border flex items-center justify-between bg-muted/40 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/20">
               #{pendency.human_readable_id}
             </span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                pendency.criticality === 'critical'
-                  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400'
-                  : 'bg-blue-500/15 text-blue-700 dark:text-blue-400'
-              }`}
-            >
-              {pendency.criticality.replace('_', '-')}
-            </span>
+            <div className="flex flex-col">
+              <h3 className="font-bold text-sm text-foreground truncate max-w-sm">
+                {pendency.description}
+              </h3>
+              <span className="text-[11px] text-muted-foreground">
+                {pendency.department_name} • {pendency.tower_name}
+              </span>
+            </div>
           </div>
 
-          <button onClick={onClose} className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tabs Bar */}
-        <div className="flex border-b border-border bg-background px-4 text-xs font-medium">
-          {(['details', 'timeline', 'comments', 'attachments'] as const).map((tab) => (
+        {/* Navigation Tabs */}
+        <div className="flex border-b border-border bg-background px-5 text-xs font-medium shrink-0">
+          {(['form', 'timeline', 'comments', 'attachments'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-3 px-3 border-b-2 transition-colors capitalize ${
+              className={`py-2.5 px-3.5 border-b-2 transition-colors capitalize ${
                 activeTab === tab
-                  ? 'border-primary text-primary font-semibold'
+                  ? 'border-primary text-primary font-bold'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              {tab === 'timeline' ? `CBE History (${pendency.cbe_change_count})` : tab}
+              {tab === 'form'
+                ? 'Item Form Details'
+                : tab === 'timeline'
+                ? `CBE Shifts (${pendency.cbe_change_count})`
+                : tab === 'comments'
+                ? `Comments (${comments.length})`
+                : `Attachments (${attachments.length})`}
             </button>
           ))}
         </div>
 
-        {/* Body Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-          {activeTab === 'details' && (
+        {/* Scrollable Form Body */}
+        <div className="p-5 overflow-y-auto space-y-4 text-xs flex-1">
+          {activeTab === 'form' && (
             <form onSubmit={handleSaveFullEdit} className="space-y-4">
+              {/* Status Switch & Calculated Badges Banner */}
+              <div className="p-3 rounded-lg border border-border bg-muted/30 flex flex-wrap items-center justify-between gap-3">
+                {/* Open/Closed Toggle Switch */}
+                <div className="flex items-center gap-3">
+                  <span className="font-medium text-foreground text-xs">Status:</span>
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isClosed}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          status: e.target.checked ? 'closed' : 'open',
+                        })
+                      }
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-amber-500/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-700 dark:peer-checked:bg-slate-600"></div>
+                    <span className="ml-2 font-bold uppercase tracking-wider text-[11px]">
+                      {isClosed ? (
+                        <span className="text-slate-600 dark:text-slate-400">Closed</span>
+                      ) : (
+                        <span className="text-amber-600 dark:text-amber-400">Open</span>
+                      )}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Calculated Non-Editable Badges */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2 py-1 rounded bg-background border border-border text-[11px] font-mono">
+                    Age: <strong>{pendency.days_open}d</strong>
+                  </span>
+                  <span
+                    className={`px-2.5 py-1 rounded font-semibold text-[11px] ${
+                      pendency.on_track_status === 'On Track'
+                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                        : pendency.on_track_status === 'Delayed'
+                        ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400'
+                        : pendency.on_track_status === 'Awaiting CBE'
+                        ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                        : 'bg-slate-500/15 text-slate-700 dark:text-slate-400'
+                    }`}
+                  >
+                    {pendency.on_track_status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Editable Description */}
               <div>
-                <label className="block font-medium text-muted-foreground mb-1">Pendency Description</label>
+                <label className="block font-medium text-muted-foreground mb-1">
+                  Pendency Details / Description <span className="text-rose-500">*</span>
+                </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={formData.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full p-2 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full p-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Form Grid: Dept, Tower, Type, Criticality */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-muted-foreground mb-1">Department</label>
                   <select
                     value={formData.department_id || ''}
                     onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
-                    className="w-full p-2 rounded-md border border-input bg-background text-foreground"
+                    className="w-full p-2 rounded-lg border border-input bg-background text-foreground"
                   >
                     {departments.map((d) => (
                       <option key={d.id} value={d.id}>
@@ -173,11 +238,11 @@ export function PendencyDetail({
                 </div>
 
                 <div>
-                  <label className="block font-medium text-muted-foreground mb-1">Tower</label>
+                  <label className="block font-medium text-muted-foreground mb-1">Tower / Location</label>
                   <select
                     value={formData.tower_id || ''}
                     onChange={(e) => setFormData({ ...formData, tower_id: e.target.value })}
-                    className="w-full p-2 rounded-md border border-input bg-background text-foreground"
+                    className="w-full p-2 rounded-lg border border-input bg-background text-foreground"
                   >
                     {towers.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -188,13 +253,13 @@ export function PendencyDetail({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-muted-foreground mb-1">Pendency Type</label>
                   <select
                     value={formData.type_id || ''}
                     onChange={(e) => setFormData({ ...formData, type_id: e.target.value })}
-                    className="w-full p-2 rounded-md border border-input bg-background text-foreground"
+                    className="w-full p-2 rounded-lg border border-input bg-background text-foreground"
                   >
                     {types.map((tp) => (
                       <option key={tp.id} value={tp.id}>
@@ -209,7 +274,7 @@ export function PendencyDetail({
                   <select
                     value={formData.criticality || 'critical'}
                     onChange={(e) => setFormData({ ...formData, criticality: e.target.value as any })}
-                    className="w-full p-2 rounded-md border border-input bg-background text-foreground"
+                    className="w-full p-2 rounded-lg border border-input bg-background text-foreground font-semibold"
                   >
                     <option value="critical">Critical</option>
                     <option value="non_critical">Non-Critical</option>
@@ -217,68 +282,58 @@ export function PendencyDetail({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Dates Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-medium text-muted-foreground mb-1">Current CBE Date</label>
+                  <label className="block font-medium text-muted-foreground mb-1">Current Target CBE Date</label>
                   <input
                     type="date"
                     value={formData.current_cbe_date || ''}
                     onChange={(e) => setFormData({ ...formData, current_cbe_date: e.target.value || null })}
-                    className="w-full p-2 rounded-md border border-input bg-background text-foreground"
+                    className="w-full p-2 rounded-lg border border-input bg-background text-foreground font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-medium text-muted-foreground mb-1">Status</label>
-                  <select
-                    value={formData.status || 'open'}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full p-2 rounded-md border border-input bg-background text-foreground"
-                  >
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
-                  </select>
+                  <label className="block font-medium text-muted-foreground mb-1">Date Opened</label>
+                  <input
+                    type="date"
+                    value={formData.opened_on || ''}
+                    onChange={(e) => setFormData({ ...formData, opened_on: e.target.value })}
+                    className="w-full p-2 rounded-lg border border-input bg-background text-foreground font-mono"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="block font-medium text-muted-foreground mb-1">Status Remarks / Next Actions</label>
+              {/* Current Status / Remarks Field at the Bottom */}
+              <div className="pt-2 border-t border-border">
+                <label className="block font-semibold text-foreground mb-1">
+                  Current Status / Action Remarks
+                </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={formData.status_remarks || ''}
                   onChange={(e) => setFormData({ ...formData, status_remarks: e.target.value })}
-                  className="w-full p-2 rounded-md border border-input bg-background text-foreground"
-                  placeholder="Current progress notes..."
+                  placeholder="Enter latest action notes, vendor discussions, or approval status..."
+                  className="w-full p-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
 
-              {/* Readonly Computed Metadata Box */}
-              <div className="p-3 rounded-lg bg-muted/60 border border-border space-y-1.5 text-[11px] text-muted-foreground">
-                <div className="flex justify-between">
-                  <span>Days Open:</span>
-                  <span className="font-medium text-foreground">{pendency.days_open} days</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Delivery Status:</span>
-                  <span className="font-semibold text-primary">{pendency.on_track_status}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Created By:</span>
-                  <span>{pendency.created_by} on {new Date(pendency.created_at).toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Last Modified By:</span>
-                  <span>{pendency.updated_by} on {new Date(pendency.updated_at).toLocaleDateString()}</span>
-                </div>
-              </div>
-
-              <div className="pt-2 flex justify-end">
+              {/* Save Footer */}
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted font-medium"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary-hover shadow-2xs transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary-hover shadow-xs transition-colors"
                 >
-                  <Save className="w-4 h-4" /> Save Changes
+                  <Save className="w-4 h-4" /> Save Form Changes
                 </button>
               </div>
             </form>
@@ -288,7 +343,7 @@ export function PendencyDetail({
 
           {activeTab === 'comments' && (
             <div className="space-y-4">
-              <div className="space-y-2 max-h-80 overflow-y-auto">
+              <div className="space-y-2 max-h-72 overflow-y-auto">
                 {comments.length === 0 ? (
                   <p className="text-center text-muted-foreground py-6">No comments posted yet.</p>
                 ) : (
@@ -316,7 +371,7 @@ export function PendencyDetail({
                 />
                 <button
                   type="submit"
-                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary-hover"
+                  className="px-3.5 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary-hover"
                 >
                   <Send className="w-4 h-4" />
                 </button>

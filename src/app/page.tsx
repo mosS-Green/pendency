@@ -9,6 +9,7 @@ import {
   History,
   Building2,
   Table as TableIcon,
+  Plus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { SummaryCard } from '@/components/dashboard/SummaryCard';
@@ -17,14 +18,17 @@ import { CriticalityChart } from '@/components/dashboard/CriticalityChart';
 import { TrendChart } from '@/components/dashboard/TrendChart';
 import { AttentionList } from '@/components/dashboard/AttentionList';
 import { PendencyDetail } from '@/components/pendencies/PendencyDetail';
+import { CreatePendencyModal } from '@/components/pendencies/CreatePendencyModal';
+import { FAB } from '@/components/layout/FAB';
 import { usePendencies } from '@/hooks/usePendencies';
 import { useUserName } from '@/hooks/useUserName';
 import { PendencyDashboardView } from '@/lib/types';
 
 export default function DashboardPage() {
   const { userName } = useUserName();
-  const { pendencies, loading, departments, towers, types, refetch } = usePendencies();
+  const { pendencies, loading, departments, towers, projects, types, refetch, createPendency } = usePendencies();
   const [selectedItem, setSelectedItem] = useState<PendencyDashboardView | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   // Compute Dashboard Metrics from REAL data
   const metrics = useMemo(() => {
@@ -60,7 +64,7 @@ export default function DashboardPage() {
     const monthsMap: Record<string, { month: string; opened: number; closed: number }> = {};
     const now = new Date();
 
-    // Generate past 6 month buckets (e.g. Feb, Mar, Apr, May, Jun, Jul)
+    // Generate past 6 month buckets
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -108,7 +112,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Top Banner */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div>
@@ -120,12 +124,20 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <Link
-          href="/pendencies"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary-hover shadow-2xs transition-colors"
-        >
-          <TableIcon className="w-4 h-4" /> View All Pendencies Table
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary-hover shadow-2xs transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Log New Pendency
+          </button>
+          <Link
+            href="/pendencies"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted shadow-2xs transition-colors"
+          >
+            <TableIcon className="w-4 h-4" /> View Register
+          </Link>
+        </div>
       </div>
 
       {/* Summary Cards Grid */}
@@ -186,7 +198,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Slide-over detail panel if item clicked */}
+      {/* Floating detail form window */}
       {selectedItem && (
         <PendencyDetail
           pendency={selectedItem}
@@ -198,6 +210,21 @@ export default function DashboardPage() {
           onSaved={refetch}
         />
       )}
+
+      {/* Create Modal */}
+      <CreatePendencyModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        departments={departments}
+        towers={towers}
+        projects={projects}
+        types={types}
+        userName={userName}
+        onCreate={(record) => createPendency(record, userName)}
+      />
+
+      {/* Global FAB */}
+      <FAB onClick={() => setIsCreateOpen(true)} />
     </div>
   );
 }

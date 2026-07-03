@@ -35,6 +35,8 @@ interface Props {
   onUpdateRemarks: (id: string, remarks: string) => Promise<boolean>;
   onSelectPendency: (item: PendencyDashboardView) => void;
   onRefreshNeeded: () => void;
+  initialSearch?: string;
+  initialStatus?: 'all' | 'open' | 'closed';
 }
 
 export function PendencyTable({
@@ -50,17 +52,19 @@ export function PendencyTable({
   onUpdateRemarks,
   onSelectPendency,
   onRefreshNeeded,
+  initialSearch = '',
+  initialStatus = 'open',
 }: Props) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'human_readable_id', desc: true }]);
   const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
 
   const [filters, setFilters] = useState<PendencyFilters>({
-    search: '',
+    search: initialSearch,
     department_ids: [],
     tower_ids: [],
     project_id: null,
     criticality: 'all',
-    status: 'all',
+    status: initialStatus,
     on_track_status: 'all',
     type_ids: [],
     date_from: null,

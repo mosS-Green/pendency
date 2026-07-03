@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const { pendencies, loading, departments, towers, projects, types, refetch, createPendency } = usePendencies();
   const [selectedItem, setSelectedItem] = useState<PendencyDashboardView | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'open' | 'closed' | 'overdue' | 'all'>('open');
 
   // Compute Dashboard Metrics from REAL data
   const metrics = useMemo(() => {
@@ -148,6 +149,8 @@ export default function DashboardPage() {
           subtitle="Action items blocking progress"
           icon={Building2}
           colorClass="text-amber-600"
+          onClick={() => setStatusFilter(statusFilter === 'open' ? 'all' : 'open')}
+          isActive={statusFilter === 'open'}
         />
         <SummaryCard
           title="Delayed / Overdue"
@@ -155,13 +158,17 @@ export default function DashboardPage() {
           subtitle="CBE date missed"
           icon={AlertTriangle}
           colorClass="text-rose-600"
+          onClick={() => setStatusFilter(statusFilter === 'overdue' ? 'open' : 'overdue')}
+          isActive={statusFilter === 'overdue'}
         />
         <SummaryCard
           title="Closed Items"
           value={metrics.closedCount}
-          subtitle="Resolved & verified"
+          subtitle="Click to view resolved items"
           icon={CheckCircle2}
           colorClass="text-emerald-600"
+          onClick={() => setStatusFilter(statusFilter === 'closed' ? 'open' : 'closed')}
+          isActive={statusFilter === 'closed'}
         />
         <SummaryCard
           title="Avg. Days Open"
@@ -169,6 +176,7 @@ export default function DashboardPage() {
           subtitle="Age of open items"
           icon={Clock}
           colorClass="text-blue-600"
+          onClick={() => setStatusFilter('open')}
         />
         <SummaryCard
           title="CBE Shifts"
@@ -176,6 +184,7 @@ export default function DashboardPage() {
           subtitle="Times dates were pushed"
           icon={History}
           colorClass="text-purple-600"
+          onClick={() => setStatusFilter('all')}
         />
       </div>
 
@@ -183,6 +192,7 @@ export default function DashboardPage() {
       <DepartmentKanban
         data={pendencies}
         onSelectItem={(item) => setSelectedItem(item)}
+        statusFilter={statusFilter}
       />
 
       {/* Main Charts & Attention Grid */}

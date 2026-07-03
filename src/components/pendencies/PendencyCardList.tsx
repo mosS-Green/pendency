@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { PendencyDashboardView } from '@/lib/types';
-import { Calendar, History, Clock, ArrowUpRight } from 'lucide-react';
+import { Calendar, History, Clock, ArrowUpRight, Filter } from 'lucide-react';
 import { InlineStatusToggle, InlineDatePicker } from './InlineEditor';
 
 interface Props {
@@ -10,20 +10,65 @@ interface Props {
   onSelectItem: (item: PendencyDashboardView) => void;
   onUpdateCBE: (id: string, date: string | null) => Promise<boolean>;
   onUpdateStatus: (id: string, status: 'open' | 'closed') => Promise<boolean>;
+  initialStatus?: 'open' | 'closed' | 'all';
 }
 
-export function PendencyCardList({ items, onSelectItem, onUpdateCBE, onUpdateStatus }: Props) {
-  if (items.length === 0) {
-    return (
-      <div className="py-16 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
-        No pendency cards match the selected filter criteria.
-      </div>
-    );
-  }
+export function PendencyCardList({ items, onSelectItem, onUpdateCBE, onUpdateStatus, initialStatus = 'open' }: Props) {
+  const [statusFilter, setStatusFilter] = useState<'open' | 'closed' | 'all'>(initialStatus);
+
+  const filteredItems = useMemo(() => {
+    if (statusFilter === 'all') return items;
+    return items.filter((item) => item.status === statusFilter);
+  }, [items, statusFilter]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      {items.map((item) => {
+    <div className="space-y-4">
+      {/* Top Quick Status Switcher */}
+      <div className="flex items-center justify-between border-b border-border pb-3 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-muted-foreground flex items-center gap-1">
+            <Filter className="w-3.5 h-3.5" /> Filter Cards:
+          </span>
+          <div className="inline-flex rounded-lg border border-border bg-card p-0.5 font-medium">
+            <button
+              onClick={() => setStatusFilter('open')}
+              className={`px-3 py-1 rounded-md transition-colors ${
+                statusFilter === 'open' ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Open Items ({items.filter((i) => i.status === 'open').length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('closed')}
+              className={`px-3 py-1 rounded-md transition-colors ${
+                statusFilter === 'closed' ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Closed Items ({items.filter((i) => i.status === 'closed').length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1 rounded-md transition-colors ${
+                statusFilter === 'all' ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              All Items ({items.length})
+            </button>
+          </div>
+        </div>
+
+        <span className="text-[11px] text-muted-foreground font-mono">
+          Showing <strong className="text-foreground">{filteredItems.length}</strong> card(s)
+        </span>
+      </div>
+
+      {filteredItems.length === 0 ? (
+        <div className="py-16 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
+          {statusFilter === 'open' ? 'No open pendency cards found.' : 'No closed pendency cards match the criteria.'}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredItems.map((item) => {
         // Subtle color coding
         let borderClass = 'border-l-4 border-l-slate-400 dark:border-l-slate-600';
         let bgTint = 'bg-card';
@@ -106,6 +151,8 @@ export function PendencyCardList({ items, onSelectItem, onUpdateCBE, onUpdateSta
           </div>
         );
       })}
+        </div>
+      )}
     </div>
   );
 }

@@ -7,24 +7,34 @@ import { Building2, Calendar, Clock, History, Search, X } from 'lucide-react';
 interface Props {
   data: PendencyDashboardView[];
   onSelectItem: (item: PendencyDashboardView) => void;
+  statusFilter?: 'open' | 'closed' | 'overdue' | 'all';
 }
 
-export function DepartmentKanban({ data, onSelectItem }: Props) {
+export function DepartmentKanban({ data, onSelectItem, statusFilter = 'open' }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter items by search query
+  // Filter items by statusFilter and search query
   const filteredData = useMemo(() => {
-    if (!searchQuery.trim()) return data;
-    const q = searchQuery.toLowerCase().trim();
     return data.filter((item) => {
-      const matchDesc = item.description.toLowerCase().includes(q);
-      const matchTower = (item.tower_name || '').toLowerCase().includes(q);
-      const matchType = (item.type_name || '').toLowerCase().includes(q);
-      const matchRemarks = (item.status_remarks || '').toLowerCase().includes(q);
-      const matchId = item.human_readable_id.toString().includes(q);
-      return matchDesc || matchTower || matchType || matchRemarks || matchId;
+      // 1. Status Filter
+      if (statusFilter === 'open' && item.status !== 'open') return false;
+      if (statusFilter === 'closed' && item.status !== 'closed') return false;
+      if (statusFilter === 'overdue' && (item.status !== 'open' || !item.is_overdue)) return false;
+
+      // 2. Search Query Filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchDesc = item.description.toLowerCase().includes(q);
+        const matchTower = (item.tower_name || '').toLowerCase().includes(q);
+        const matchType = (item.type_name || '').toLowerCase().includes(q);
+        const matchRemarks = (item.status_remarks || '').toLowerCase().includes(q);
+        const matchId = item.human_readable_id.toString().includes(q);
+        if (!matchDesc && !matchTower && !matchType && !matchRemarks && !matchId) return false;
+      }
+
+      return true;
     });
-  }, [data, searchQuery]);
+  }, [data, searchQuery, statusFilter]);
 
   // Department Column definitions
   const columns = [
@@ -61,9 +71,30 @@ export function DepartmentKanban({ data, onSelectItem }: Props) {
     <div className="space-y-3">
       {/* Header + Real-Time Search Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-2.5">
-        <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-          <Building2 className="w-4 h-4 text-primary" /> Department Pendencies Board
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Building2 className="w-4 h-4 text-primary" /> Department Pendencies Board
+          </h3>
+          <span
+            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+              statusFilter === 'closed'
+                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                : statusFilter === 'overdue'
+                ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800'
+                : statusFilter === 'all'
+                ? 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-800'
+                : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800'
+            }`}
+          >
+            {statusFilter === 'closed'
+              ? 'Showing Closed Items'
+              : statusFilter === 'overdue'
+              ? 'Showing Overdue Items'
+              : statusFilter === 'all'
+              ? 'Showing All Items'
+              : 'Showing Open Items Only'}
+          </span>
+        </div>
 
         {/* Dashboard Search Bar */}
         <div className="relative min-w-[240px] flex-1 max-w-md">

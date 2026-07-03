@@ -12,6 +12,18 @@ import { SummaryCard } from '@/components/dashboard/SummaryCard';
 import { PendencyDashboardView } from '@/lib/types';
 import { Building2, Table as TableIcon, LayoutGrid, AlertTriangle, CheckCircle2, Plus, Clock } from 'lucide-react';
 
+// Required for Next.js static export with dynamic routes
+export async function generateStaticParams() {
+  return [
+    { slug: 'c-and-p' },
+    { slug: 'cb-civil' },
+    { slug: 'cb-mep' },
+    { slug: 'design' },
+    { slug: 'planning' },
+    { slug: 'site' },
+  ];
+}
+
 interface Props {
   params: Promise<{ slug: string }>;
 }

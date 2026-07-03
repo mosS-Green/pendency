@@ -36,24 +36,37 @@ BEGIN
   INSERT INTO towers (project_id, name) VALUES (v_proj_id, 'Phase 3 Tower 10') ON CONFLICT DO NOTHING;
   INSERT INTO towers (project_id, name) VALUES (v_proj_id, 'T7 & T8') ON CONFLICT DO NOTHING;
 
-  SELECT id INTO v_tow_p3 FROM towers WHERE project_id = v_proj_id AND name = 'Phase 3';
-  SELECT id INTO v_tow_t10 FROM towers WHERE project_id = v_proj_id AND name = 'Phase 3 Tower 10';
-  SELECT id INTO v_tow_t7t8 FROM towers WHERE project_id = v_proj_id AND name = 'T7 & T8';
+  SELECT id INTO v_tow_p3 FROM towers WHERE project_id = v_proj_id AND name = 'Phase 3' LIMIT 1;
+  SELECT id INTO v_tow_t10 FROM towers WHERE project_id = v_proj_id AND name = 'Phase 3 Tower 10' LIMIT 1;
+  SELECT id INTO v_tow_t7t8 FROM towers WHERE project_id = v_proj_id AND name = 'T7 & T8' LIMIT 1;
 
-  -- 3. Resolve Departments
-  SELECT id INTO v_dept_cp FROM departments WHERE name = 'C&P';
-  SELECT id INTO v_dept_cb_civil FROM departments WHERE name = 'C&B - Civil';
-  SELECT id INTO v_dept_design FROM departments WHERE name = 'Design';
+  -- 3. Resolve / Ensure Departments
+  INSERT INTO departments (name, display_order) VALUES ('C&P', 1) ON CONFLICT DO NOTHING;
+  INSERT INTO departments (name, display_order) VALUES ('C&B - Civil', 2) ON CONFLICT DO NOTHING;
+  INSERT INTO departments (name, display_order) VALUES ('Design', 4) ON CONFLICT DO NOTHING;
 
-  -- 4. Resolve Pendency Types
-  SELECT id INTO v_type_work_award FROM pendency_types WHERE name = 'Work award';
-  SELECT id INTO v_type_drawing_appr FROM pendency_types WHERE name = 'Drawing approval';
-  SELECT id INTO v_type_extra_item FROM pendency_types WHERE name = 'Extra item approval';
-  SELECT id INTO v_type_sample_appr FROM pendency_types WHERE name = 'Sample approval';
-  SELECT id INTO v_type_cost_hit FROM pendency_types WHERE name = 'Cost hit approval';
-  SELECT id INTO v_type_descope FROM pendency_types WHERE name = 'Descope';
-  SELECT id INTO v_type_data_req FROM pendency_types WHERE name = 'Data required';
-  SELECT id INTO v_type_shop_drawing FROM pendency_types WHERE name = 'Shop drawing approval';
+  SELECT id INTO v_dept_cp FROM departments WHERE LOWER(name) LIKE '%c&p%' LIMIT 1;
+  SELECT id INTO v_dept_cb_civil FROM departments WHERE LOWER(name) LIKE '%c&b - civil%' LIMIT 1;
+  SELECT id INTO v_dept_design FROM departments WHERE LOWER(name) LIKE '%design%' LIMIT 1;
+
+  -- 4. Resolve / Ensure Pendency Types
+  INSERT INTO pendency_types (name) VALUES ('Work award') ON CONFLICT DO NOTHING;
+  INSERT INTO pendency_types (name) VALUES ('Drawing approval') ON CONFLICT DO NOTHING;
+  INSERT INTO pendency_types (name) VALUES ('Extra item approval') ON CONFLICT DO NOTHING;
+  INSERT INTO pendency_types (name) VALUES ('Sample approval') ON CONFLICT DO NOTHING;
+  INSERT INTO pendency_types (name) VALUES ('Cost hit approval') ON CONFLICT DO NOTHING;
+  INSERT INTO pendency_types (name) VALUES ('Descope') ON CONFLICT DO NOTHING;
+  INSERT INTO pendency_types (name) VALUES ('Data required') ON CONFLICT DO NOTHING;
+  INSERT INTO pendency_types (name) VALUES ('Shop drawing approval') ON CONFLICT DO NOTHING;
+
+  SELECT id INTO v_type_work_award FROM pendency_types WHERE LOWER(name) = 'work award' LIMIT 1;
+  SELECT id INTO v_type_drawing_appr FROM pendency_types WHERE LOWER(name) = 'drawing approval' LIMIT 1;
+  SELECT id INTO v_type_extra_item FROM pendency_types WHERE LOWER(name) = 'extra item approval' LIMIT 1;
+  SELECT id INTO v_type_sample_appr FROM pendency_types WHERE LOWER(name) = 'sample approval' LIMIT 1;
+  SELECT id INTO v_type_cost_hit FROM pendency_types WHERE LOWER(name) = 'cost hit approval' LIMIT 1;
+  SELECT id INTO v_type_descope FROM pendency_types WHERE LOWER(name) = 'descope' LIMIT 1;
+  SELECT id INTO v_type_data_req FROM pendency_types WHERE LOWER(name) = 'data required' LIMIT 1;
+  SELECT id INTO v_type_shop_drawing FROM pendency_types WHERE LOWER(name) = 'shop drawing approval' LIMIT 1;
 
   -- 5. Insert Pendency Items
 

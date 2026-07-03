@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS pendencies (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 6. CBE History Audit Table (Tracks every shift in Committed By Estimate date)
+-- 6. CBE History Audit Table
 CREATE TABLE IF NOT EXISTS cbe_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   pendency_id UUID NOT NULL REFERENCES pendencies(id) ON DELETE CASCADE,
@@ -105,7 +105,7 @@ CREATE TRIGGER trg_set_updated_at
 BEFORE UPDATE ON pendencies
 FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
--- Trigger 2: Track CBE date changes AFTER UPDATE (ensures parent row exists for FK)
+-- Trigger 2: Track CBE date changes AFTER UPDATE
 CREATE OR REPLACE FUNCTION fn_track_cbe_change()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -147,7 +147,7 @@ BEFORE UPDATE ON pendencies
 FOR EACH ROW EXECUTE FUNCTION fn_auto_close_date();
 
 -- ========================================================
--- VIEW: v_pendency_dashboard
+-- VIEW: v_pendency_dashboard (Uses LEFT JOINs so no pendency is hidden)
 -- ========================================================
 
 CREATE OR REPLACE VIEW v_pendency_dashboard AS
@@ -155,13 +155,13 @@ SELECT
   p.id,
   p.human_readable_id,
   p.project_id,
-  pr.name AS project_name,
+  COALESCE(pr.name, 'Woods') AS project_name,
   p.tower_id,
-  t.name AS tower_name,
+  COALESCE(t.name, 'General') AS tower_name,
   p.department_id,
-  d.name AS department_name,
+  COALESCE(d.name, 'Unassigned') AS department_name,
   p.type_id,
-  pt.name AS type_name,
+  COALESCE(pt.name, 'General') AS type_name,
   p.criticality,
   p.status,
   p.description,
@@ -202,10 +202,10 @@ SELECT
   COALESCE(ch.cbe_change_count, 0) AS cbe_change_count
 
 FROM pendencies p
-JOIN projects pr ON pr.id = p.project_id
-JOIN towers t ON t.id = p.tower_id
-JOIN departments d ON d.id = p.department_id
-JOIN pendency_types pt ON pt.id = p.type_id
+LEFT JOIN projects pr ON pr.id = p.project_id
+LEFT JOIN towers t ON t.id = p.tower_id
+LEFT JOIN departments d ON d.id = p.department_id
+LEFT JOIN pendency_types pt ON pt.id = p.type_id
 LEFT JOIN (
   SELECT pendency_id, COUNT(*) AS cbe_change_count
   FROM cbe_history

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { User, Sun, Moon, RefreshCw, Layers, ShieldCheck } from 'lucide-react';
+import { User, Sun, Moon, RefreshCw, Download, ShieldCheck } from 'lucide-react';
 import { NotificationBell } from '../notifications/NotificationBell';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 interface Props {
   userName: string;
@@ -20,6 +21,7 @@ export function Header({
   isSyncing,
 }: Props) {
   const [isDark, setIsDark] = useState(false);
+  const { isInstallable, promptInstall } = usePWAInstall();
 
   useEffect(() => {
     const isDarkMode = document.documentElement.classList.contains('dark');
@@ -50,22 +52,35 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-border bg-card px-4 shadow-2xs">
-      {/* Left Title & Status */}
+      {/* Left Title & Brand Logo */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 font-semibold text-base text-foreground">
-          <div className="p-1.5 rounded-md bg-primary/10 text-primary">
-            <Layers className="w-5 h-5" />
+        <div className="flex items-center gap-2.5 font-semibold text-base text-foreground">
+          {/* Minimal Logo: Letter P in Orange Circle */}
+          <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-extrabold text-sm shadow-xs select-none">
+            P
           </div>
-          <span>Woods Construction Pendency</span>
+          <span>Woods Pendency</span>
         </div>
         <span className="hidden md:inline-block h-4 w-px bg-border" />
         <span className="hidden md:inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Shared Internal Tool
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Internal App
         </span>
       </div>
 
       {/* Right Actions */}
       <div className="flex items-center gap-2.5">
+        {/* PWA Install Button */}
+        {isInstallable && (
+          <button
+            onClick={promptInstall}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-2xs"
+            title="Install app to desktop / home screen"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Install App</span>
+          </button>
+        )}
+
         {/* Sync Indicator */}
         <button
           onClick={onManualRefresh}

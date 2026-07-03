@@ -91,12 +91,25 @@ CREATE TABLE IF NOT EXISTS pendency_attachments (
 -- TRIGGERS & FUNCTIONS
 -- ========================================================
 
--- Trigger to track CBE changes automatically whenever current_cbe_date changes
+-- Trigger 1: Auto-update updated_at timestamp BEFORE UPDATE
+CREATE OR REPLACE FUNCTION fn_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_set_updated_at ON pendencies;
+CREATE TRIGGER trg_set_updated_at
+BEFORE UPDATE ON pendencies
+FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+-- Trigger 2: Track CBE date changes AFTER UPDATE (ensures parent row exists for FK)
 CREATE OR REPLACE FUNCTION fn_track_cbe_change()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Track when current_cbe_date changes (or is set for the first time)
-  IF (TG_OP = 'UPDATE') AND (OLD.current_cbe_date IS DISTINCT FROM NEW.current_cbe_date) THEN
+  IF (OLD.current_cbe_date IS DISTINCT FROM NEW.current_cbe_date) THEN
     INSERT INTO cbe_history (pendency_id, previous_cbe_date, new_cbe_date, changed_by, reason)
     VALUES (
       NEW.id,
@@ -105,29 +118,17 @@ BEGIN
       COALESCE(NEW.updated_by, 'Unknown'),
       'CBE Date updated'
     );
-  ELSIF (TG_OP = 'INSERT') AND (NEW.current_cbe_date IS NOT NULL) THEN
-    INSERT INTO cbe_history (pendency_id, previous_cbe_date, new_cbe_date, changed_by, reason)
-    VALUES (
-      NEW.id,
-      NULL,
-      NEW.current_cbe_date,
-      COALESCE(NEW.created_by, 'Unknown'),
-      'Initial CBE Date set'
-    );
   END IF;
-
-  -- Automatically refresh updated_at timestamp
-  NEW.updated_at = now();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_cbe_history ON pendencies;
 CREATE TRIGGER trg_cbe_history
-BEFORE INSERT OR UPDATE ON pendencies
+AFTER UPDATE ON pendencies
 FOR EACH ROW EXECUTE FUNCTION fn_track_cbe_change();
 
--- Trigger to automatically populate closed_on date when status becomes 'closed'
+-- Trigger 3: Auto-set closed_on date when status becomes 'closed'
 CREATE OR REPLACE FUNCTION fn_auto_close_date()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -142,12 +143,11 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_auto_close ON pendencies;
 CREATE TRIGGER trg_auto_close
-BEFORE INSERT OR UPDATE ON pendencies
+BEFORE UPDATE ON pendencies
 FOR EACH ROW EXECUTE FUNCTION fn_auto_close_date();
 
 -- ========================================================
 -- VIEW: v_pendency_dashboard
--- Consolidates calculated metrics & joins all lookup names
 -- ========================================================
 
 CREATE OR REPLACE VIEW v_pendency_dashboard AS
@@ -174,23 +174,23 @@ SELECT
   p.updated_by,
   p.updated_at,
   
-  -- Derived: Days Open (today - opened_on, or closed_on - opened_on if closed)
+  -- Derived: Days Open
   CASE 
     WHEN p.status = 'closed' AND p.closed_on IS NOT NULL THEN (p.closed_on - p.opened_on)
     ELSE (CURRENT_DATE - p.opened_on)
   END AS days_open,
 
-  -- Derived: Is Overdue (true if open + CBE set + CBE in past)
+  -- Derived: Is Overdue
   (p.status = 'open' AND p.current_cbe_date IS NOT NULL AND p.current_cbe_date < CURRENT_DATE) AS is_overdue,
 
-  -- Derived: Days Since CBE Due (today - current_cbe_date if overdue)
+  -- Derived: Days Since CBE Due
   CASE 
     WHEN p.status = 'open' AND p.current_cbe_date IS NOT NULL AND p.current_cbe_date < CURRENT_DATE 
     THEN (CURRENT_DATE - p.current_cbe_date)
     ELSE 0 
   END AS days_since_cbe_due,
 
-  -- Derived: On Track Status (Awaiting CBE / On Track / Delayed / Closed)
+  -- Derived: On Track Status
   CASE
     WHEN p.status = 'closed' THEN 'Closed'
     WHEN p.status = 'open' AND p.current_cbe_date IS NULL THEN 'Awaiting CBE'
@@ -198,7 +198,7 @@ SELECT
     WHEN p.status = 'open' AND p.current_cbe_date < CURRENT_DATE THEN 'Delayed'
   END AS on_track_status,
 
-  -- Derived: Count of CBE date shifts (minus 1 if initial set, or total history entries)
+  -- Derived: Count of CBE date shifts
   COALESCE(ch.cbe_change_count, 0) AS cbe_change_count
 
 FROM pendencies p

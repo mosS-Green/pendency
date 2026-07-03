@@ -31,6 +31,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>Woods — Construction Pendency Tracker</title>
         <meta name="description" content="Track, resolve, and audit open action items, approvals, and CBE date changes across Woods construction project." />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
+        <meta name="theme-color" content="#C25E00" />
       </head>
       <body className="min-h-screen bg-background text-foreground flex flex-col font-sans antialiased selection:bg-primary/20">
         <Header

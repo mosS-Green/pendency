@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Clock,
   History,
-  TrendingUp,
   Building2,
   Table as TableIcon,
 } from 'lucide-react';
@@ -27,7 +26,7 @@ export default function DashboardPage() {
   const { pendencies, loading, departments, towers, types, refetch } = usePendencies();
   const [selectedItem, setSelectedItem] = useState<PendencyDashboardView | null>(null);
 
-  // Compute Dashboard Metrics
+  // Compute Dashboard Metrics from REAL data
   const metrics = useMemo(() => {
     const openItems = pendencies.filter((p) => p.status === 'open');
     const overdueItems = openItems.filter((p) => p.is_overdue);
@@ -57,14 +56,34 @@ export default function DashboardPage() {
     const criticalCount = openItems.filter((p) => p.criticality === 'critical').length;
     const nonCriticalCount = openItems.filter((p) => p.criticality === 'non_critical').length;
 
-    // Monthly Trend Dummy/Calculated Data
-    const trendChartData = [
-      { month: 'Mar', opened: 8, closed: 5 },
-      { month: 'Apr', opened: 12, closed: 9 },
-      { month: 'May', opened: 15, closed: 11 },
-      { month: 'Jun', opened: 10, closed: 14 },
-      { month: 'Jul', opened: pendencies.length, closed: closedItems.length },
-    ];
+    // Real Monthly Trend Data computed dynamically from actual DB opened_on & closed_on dates
+    const monthsMap: Record<string, { month: string; opened: number; closed: number }> = {};
+    const now = new Date();
+
+    // Generate past 6 month buckets (e.g. Feb, Mar, Apr, May, Jun, Jul)
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleString('default', { month: 'short' });
+      monthsMap[key] = { month: label, opened: 0, closed: 0 };
+    }
+
+    pendencies.forEach((item) => {
+      if (item.opened_on) {
+        const openedKey = item.opened_on.substring(0, 7);
+        if (monthsMap[openedKey]) {
+          monthsMap[openedKey].opened += 1;
+        }
+      }
+      if (item.closed_on) {
+        const closedKey = item.closed_on.substring(0, 7);
+        if (monthsMap[closedKey]) {
+          monthsMap[closedKey].closed += 1;
+        }
+      }
+    });
+
+    const trendChartData = Object.values(monthsMap);
 
     return {
       openCount: openItems.length,

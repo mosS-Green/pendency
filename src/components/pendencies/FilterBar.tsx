@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, RotateCcw, Bookmark, Save, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Filter, RotateCcw, Bookmark, Save, X, Download, Upload } from 'lucide-react';
 import { Department, Tower, Project, PendencyType, PendencyFilters, Criticality, PendencyStatus, OnTrackStatus } from '@/lib/types';
+import { importPendenciesFromExcel } from '@/lib/exportExcel';
 
 interface Props {
   filters: PendencyFilters;
@@ -11,7 +12,9 @@ interface Props {
   towers: Tower[];
   projects: Project[];
   types: PendencyType[];
+  userName: string;
   onExportExcel: () => void;
+  onRefreshNeeded: () => void;
   totalCount: number;
   filteredCount: number;
 }
@@ -25,13 +28,17 @@ export function FilterBar({
   towers,
   projects,
   types,
+  userName,
   onExportExcel,
+  onRefreshNeeded,
   totalCount,
   filteredCount,
 }: Props) {
   const [savedViews, setSavedViews] = useState<{ name: string; filters: PendencyFilters }[]>([]);
   const [viewNameInput, setViewNameInput] = useState('');
   const [isSavingView, setIsSavingView] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -57,6 +64,24 @@ export function FilterBar({
     const updated = savedViews.filter((_, i) => i !== index);
     setSavedViews(updated);
     localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(updated));
+  };
+
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const file = e.target.files[0];
+    setIsImporting(true);
+
+    const result = await importPendenciesFromExcel(file, userName, departments, towers, projects, types);
+
+    setIsImporting(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    if (result.successCount > 0) {
+      alert(`Successfully imported ${result.successCount} pendency items!`);
+      onRefreshNeeded();
+    } else {
+      alert(`Import failed or no valid rows found.`);
+    }
   };
 
   const resetFilters = () => {
@@ -85,7 +110,7 @@ export function FilterBar({
 
   return (
     <div className="rounded-xl border border-border bg-card p-3 shadow-2xs space-y-3">
-      {/* Top Row: Search + Quick Toggles + Saved Views */}
+      {/* Top Row: Search + Quick Toggles + Export / Import */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Search */}
         <div className="relative flex-1 min-w-[220px]">
@@ -135,12 +160,32 @@ export function FilterBar({
             ))}
           </div>
 
-          {/* Export Button */}
+          {/* Import XLSX */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileImport}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isImporting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors shadow-2xs"
+            title="Import pendencies from XLSX spreadsheet"
+          >
+            <Upload className="w-3.5 h-3.5 text-primary" />
+            <span>{isImporting ? 'Importing...' : 'Import XLSX'}</span>
+          </button>
+
+          {/* Export XLSX */}
           <button
             onClick={onExportExcel}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white transition-colors shadow-2xs"
+            title="Export current view to XLSX"
           >
-            Export XLSX
+            <Download className="w-3.5 h-3.5" />
+            <span>Export XLSX</span>
           </button>
         </div>
       </div>

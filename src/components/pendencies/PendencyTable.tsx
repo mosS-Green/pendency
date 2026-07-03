@@ -10,17 +10,11 @@ import {
   ColumnDef,
   flexRender,
 } from '@tanstack/react-table';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import {
-  ArrowUpDown,
   ChevronDown,
   ChevronUp,
-  AlertCircle,
-  Clock,
   History,
   CheckCircle2,
-  Calendar,
-  Layers,
 } from 'lucide-react';
 import { PendencyDashboardView, Department, Tower, PendencyType, PendencyFilters } from '@/lib/types';
 import { InlineDatePicker, InlineStatusToggle, InlineTextEditor } from './InlineEditor';
@@ -295,7 +289,9 @@ export function PendencyTable({
         towers={towers}
         projects={projects}
         types={types}
+        userName={userName}
         onExportExcel={handleExportAllFiltered}
+        onRefreshNeeded={onRefreshNeeded}
         totalCount={data.length}
         filteredCount={filteredData.length}
       />

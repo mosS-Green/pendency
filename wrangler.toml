@@ -1,0 +1,6 @@
+name = "construction-pendency-tracker"
+compatibility_date = "2024-09-25"
+
+# Cloudflare Pages static assets configuration
+[site]
+bucket = "./out"

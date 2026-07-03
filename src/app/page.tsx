@@ -1,0 +1,184 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import {
+  LayoutDashboard,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  History,
+  TrendingUp,
+  Building2,
+  Table as TableIcon,
+} from 'lucide-react';
+import Link from 'next/link';
+import { SummaryCard } from '@/components/dashboard/SummaryCard';
+import { DepartmentChart } from '@/components/dashboard/DepartmentChart';
+import { CriticalityChart } from '@/components/dashboard/CriticalityChart';
+import { TrendChart } from '@/components/dashboard/TrendChart';
+import { AttentionList } from '@/components/dashboard/AttentionList';
+import { PendencyDetail } from '@/components/pendencies/PendencyDetail';
+import { usePendencies } from '@/hooks/usePendencies';
+import { useUserName } from '@/hooks/useUserName';
+import { PendencyDashboardView } from '@/lib/types';
+
+export default function DashboardPage() {
+  const { userName } = useUserName();
+  const { pendencies, loading, departments, towers, types, refetch } = usePendencies();
+  const [selectedItem, setSelectedItem] = useState<PendencyDashboardView | null>(null);
+
+  // Compute Dashboard Metrics
+  const metrics = useMemo(() => {
+    const openItems = pendencies.filter((p) => p.status === 'open');
+    const overdueItems = openItems.filter((p) => p.is_overdue);
+    const closedItems = pendencies.filter((p) => p.status === 'closed');
+
+    const totalDaysOpen = openItems.reduce((acc, curr) => acc + (curr.days_open || 0), 0);
+    const avgDaysOpen = openItems.length > 0 ? Math.round(totalDaysOpen / openItems.length) : 0;
+
+    const cbeSlippedCount = pendencies.reduce((acc, curr) => acc + (curr.cbe_change_count || 0), 0);
+
+    // Department Breakdown Data
+    const deptMap: Record<string, { department: string; open: number; overdue: number }> = {};
+    departments.forEach((d) => {
+      deptMap[d.name] = { department: d.name, open: 0, overdue: 0 };
+    });
+
+    openItems.forEach((item) => {
+      if (deptMap[item.department_name]) {
+        deptMap[item.department_name].open += 1;
+        if (item.is_overdue) deptMap[item.department_name].overdue += 1;
+      }
+    });
+
+    const deptChartData = Object.values(deptMap);
+
+    // Criticality Counts
+    const criticalCount = openItems.filter((p) => p.criticality === 'critical').length;
+    const nonCriticalCount = openItems.filter((p) => p.criticality === 'non_critical').length;
+
+    // Monthly Trend Dummy/Calculated Data
+    const trendChartData = [
+      { month: 'Mar', opened: 8, closed: 5 },
+      { month: 'Apr', opened: 12, closed: 9 },
+      { month: 'May', opened: 15, closed: 11 },
+      { month: 'Jun', opened: 10, closed: 14 },
+      { month: 'Jul', opened: pendencies.length, closed: closedItems.length },
+    ];
+
+    return {
+      openCount: openItems.length,
+      overdueCount: overdueItems.length,
+      closedCount: closedItems.length,
+      avgDaysOpen,
+      cbeSlippedCount,
+      deptChartData,
+      criticalCount,
+      nonCriticalCount,
+      trendChartData,
+      overdueItems,
+    };
+  }, [pendencies, departments]);
+
+  if (loading) {
+    return (
+      <div className="py-20 text-center text-muted-foreground text-xs animate-pulse">
+        Loading Woods construction dashboard metrics...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
+        <div>
+          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+            <LayoutDashboard className="w-5 h-5 text-primary" /> Construction Executive Dashboard
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Real-time tracking of Woods project action items, commitment date slippages, and department performance.
+          </p>
+        </div>
+
+        <Link
+          href="/pendencies"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary-hover shadow-2xs transition-colors"
+        >
+          <TableIcon className="w-4 h-4" /> View All Pendencies Table
+        </Link>
+      </div>
+
+      {/* Summary Cards Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <SummaryCard
+          title="Total Open Items"
+          value={metrics.openCount}
+          subtitle="Action items blocking progress"
+          icon={Building2}
+          colorClass="text-amber-600"
+        />
+        <SummaryCard
+          title="Delayed / Overdue"
+          value={metrics.overdueCount}
+          subtitle="CBE date missed"
+          icon={AlertTriangle}
+          colorClass="text-rose-600"
+        />
+        <SummaryCard
+          title="Closed Items"
+          value={metrics.closedCount}
+          subtitle="Resolved & verified"
+          icon={CheckCircle2}
+          colorClass="text-emerald-600"
+        />
+        <SummaryCard
+          title="Avg. Days Open"
+          value={`${metrics.avgDaysOpen}d`}
+          subtitle="Age of open items"
+          icon={Clock}
+          colorClass="text-blue-600"
+        />
+        <SummaryCard
+          title="CBE Shifts"
+          value={metrics.cbeSlippedCount}
+          subtitle="Times dates were pushed"
+          icon={History}
+          colorClass="text-purple-600"
+        />
+      </div>
+
+      {/* Main Charts & Attention Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
+          <DepartmentChart data={metrics.deptChartData} />
+          <TrendChart data={metrics.trendChartData} />
+        </div>
+
+        <div className="space-y-4">
+          <CriticalityChart
+            criticalCount={metrics.criticalCount}
+            nonCriticalCount={metrics.nonCriticalCount}
+          />
+          <AttentionList
+            overdueItems={metrics.overdueItems}
+            onSelectItem={(item) => setSelectedItem(item)}
+          />
+        </div>
+      </div>
+
+      {/* Slide-over detail panel if item clicked */}
+      {selectedItem && (
+        <PendencyDetail
+          pendency={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          departments={departments}
+          towers={towers}
+          types={types}
+          userName={userName}
+          onSaved={refetch}
+        />
+      )}
+    </div>
+  );
+}

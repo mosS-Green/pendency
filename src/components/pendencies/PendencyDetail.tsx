@@ -16,7 +16,6 @@ import {
   Clock,
   Layers,
   Building,
-  Mail,
 } from 'lucide-react';
 import { PendencyDashboardView, Department, Tower, PendencyType } from '@/lib/types';
 import { CBETimeline } from './CBETimeline';
@@ -159,22 +158,12 @@ export function PendencyDetail({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <a
-              href={`outlook:?"https://outlook.office.com/mail/search?q=${encodeURIComponent(pendency.description)}"`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-foreground hover:bg-muted text-xs font-semibold shadow-2xs transition-colors shrink-0"
-              title="Check Update in Outlook"
-            >
-              <Mail className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-              <span>Check Update</span>
-            </a>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation Tabs */}

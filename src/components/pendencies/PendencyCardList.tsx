@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { PendencyDashboardView } from '@/lib/types';
-import { Calendar, History, Clock, ArrowUpRight, Filter, Mail } from 'lucide-react';
+import { Calendar, History, Clock, ArrowUpRight, Filter } from 'lucide-react';
 import { InlineStatusToggle, InlineDatePicker } from './InlineEditor';
 
 interface Props {
@@ -117,19 +117,9 @@ export function PendencyCardList({ items, onSelectItem, onUpdateCBE, onUpdateSta
 
             {/* Pendency Description (Wrapped text as per screen width) */}
             <div className="space-y-1">
-              <div className="flex items-start justify-between gap-2 group/card-desc">
-                <p className="font-medium text-foreground text-xs leading-relaxed break-words line-clamp-3 group-hover:text-primary transition-colors flex-1">
-                  {item.description}
-                </p>
-                <a
-                  href={`outlook:?"https://outlook.office.com/mail/search?q=${encodeURIComponent(item.description)}"`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="opacity-0 group-hover/card-desc:opacity-100 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0"
-                  title="Check Update in Outlook"
-                >
-                  <Mail className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-                </a>
-              </div>
+              <p className="font-medium text-foreground text-xs leading-relaxed break-words line-clamp-3 group-hover:text-primary transition-colors">
+                {item.description}
+              </p>
               <p className="text-[11px] text-muted-foreground truncate">
                 {item.department_name} • {item.tower_name}
               </p>

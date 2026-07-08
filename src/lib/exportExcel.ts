@@ -28,9 +28,14 @@ export function exportPendenciesToExcel(
   pendencies: PendencyDashboardView[],
   fileName = 'Woods_Construction_Pendency_Tracker.xlsx'
 ) {
+  const filtered = pendencies.filter((p) => {
+    const dept = (p.department_name || '').trim().toLowerCase();
+    return dept !== 'planning' && dept !== 'site';
+  });
+
   let dataRows: Record<string, any>[] = [];
 
-  if (pendencies.length === 0) {
+  if (filtered.length === 0) {
     // Produce empty template with defined headers
     const emptyRow: Record<string, any> = {};
     EXPORT_HEADERS.forEach((header) => {
@@ -38,7 +43,7 @@ export function exportPendenciesToExcel(
     });
     dataRows = [emptyRow];
   } else {
-    dataRows = pendencies.map((p, index) => ({
+    dataRows = filtered.map((p, index) => ({
       'SN': index + 1,
       'Item ID': `#${p.human_readable_id}`,
       'Project': p.project_name,

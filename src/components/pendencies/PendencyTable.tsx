@@ -15,6 +15,7 @@ import {
   ChevronUp,
   History,
   CheckCircle2,
+  Mail,
 } from 'lucide-react';
 import { PendencyDashboardView, Department, Tower, PendencyType, PendencyFilters } from '@/lib/types';
 import { InlineDatePicker, InlineStatusToggle, InlineTextEditor } from './InlineEditor';
@@ -174,8 +175,16 @@ export function PendencyTable({
         accessorKey: 'description',
         header: 'Description',
         cell: ({ row }) => (
-          <div className="font-medium text-foreground truncate max-w-md" title={row.original.description}>
-            {row.original.description}
+          <div className="font-medium text-foreground flex items-center justify-between gap-2 group/desc" title={row.original.description}>
+            <span className="truncate flex-1">{row.original.description}</span>
+            <a
+              href={`outlook:?"https://outlook.office.com/mail/search?q=${encodeURIComponent(row.original.description)}"`}
+              onClick={(e) => e.stopPropagation()}
+              className="opacity-0 group-hover/desc:opacity-100 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-all shrink-0"
+              title="Check Update in Outlook"
+            >
+              <Mail className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+            </a>
           </div>
         ),
         size: 320,

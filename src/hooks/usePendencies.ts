@@ -29,10 +29,55 @@ export function usePendencies(initialFilters?: Partial<PendencyFilters>) {
         supabase.from('pendency_types').select('*').order('name', { ascending: true }),
       ]);
 
+      let finalTowers = towerRes.data || [];
+      let finalTypes = typeRes.data || [];
+
+      if (typeof window !== 'undefined') {
+        // Merge towers
+        try {
+          const localTowersStr = localStorage.getItem('local_towers');
+          if (localTowersStr) {
+            const localTowersList: string[] = JSON.parse(localTowersStr);
+            const defaultProjectId = projRes.data?.[0]?.id || 'c0000000-0000-0000-0000-000000000001';
+            localTowersList.forEach((name) => {
+              if (name && name.trim() && !finalTowers.some((t) => t.name.toLowerCase() === name.trim().toLowerCase())) {
+                finalTowers.push({
+                  id: `local-${name.trim().toLowerCase()}`,
+                  project_id: defaultProjectId,
+                  name: name.trim(),
+                  created_at: new Date().toISOString(),
+                });
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Error loading local towers:', e);
+        }
+
+        // Merge types
+        try {
+          const localTypesStr = localStorage.getItem('local_pendency_types');
+          if (localTypesStr) {
+            const localTypesList: string[] = JSON.parse(localTypesStr);
+            localTypesList.forEach((name) => {
+              if (name && name.trim() && !finalTypes.some((t) => t.name.toLowerCase() === name.trim().toLowerCase())) {
+                finalTypes.push({
+                  id: `local-${name.trim().toLowerCase()}`,
+                  name: name.trim(),
+                  created_at: new Date().toISOString(),
+                });
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Error loading local types:', e);
+        }
+      }
+
       if (deptRes.data) setDepartments(deptRes.data);
-      if (towerRes.data) setTowers(towerRes.data);
+      setTowers(finalTowers);
       if (projRes.data) setProjects(projRes.data);
-      if (typeRes.data) setTypes(typeRes.data);
+      setTypes(finalTypes);
     } catch (err) {
       console.error('Error fetching lookups:', err);
     }
@@ -58,6 +103,10 @@ export function usePendencies(initialFilters?: Partial<PendencyFilters>) {
       setLoading(false);
     }
   }, []);
+
+  const refetchAll = useCallback(async () => {
+    await Promise.all([fetchLookups(), fetchPendencies()]);
+  }, [fetchLookups, fetchPendencies]);
 
   useEffect(() => {
     fetchLookups();
@@ -192,7 +241,7 @@ export function usePendencies(initialFilters?: Partial<PendencyFilters>) {
       return null;
     }
 
-    fetchPendencies();
+    await refetchAll();
     return data;
   };
 
@@ -203,7 +252,7 @@ export function usePendencies(initialFilters?: Partial<PendencyFilters>) {
     towers,
     projects,
     types,
-    refetch: fetchPendencies,
+    refetch: refetchAll,
     updateCBEDate,
     updateStatus,
     updateRemarks,

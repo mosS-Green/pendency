@@ -154,8 +154,8 @@ export function DepartmentKanban({ data, onSelectItem, statusFilter = 'open' }: 
                       {/* Top Header */}
                       <div className="flex items-center justify-between gap-1">
                         <div className="flex items-center gap-1.5 truncate">
-                          <span className="font-mono font-bold text-foreground bg-muted px-1.5 py-0.5 rounded text-[11px]">
-                            #{item.human_readable_id}
+                          <span className="font-bold text-foreground bg-muted px-1.5 py-0.5 rounded text-[11px] truncate max-w-[110px]">
+                            {item.department_name}
                           </span>
                           <span className="text-[10px] text-muted-foreground truncate font-medium max-w-[110px]">
                             {item.type_name}
@@ -178,10 +178,11 @@ export function DepartmentKanban({ data, onSelectItem, statusFilter = 'open' }: 
                         {item.description}
                       </p>
 
-                      {/* Location / Tower */}
-                      <div className="text-[11px] text-muted-foreground font-medium truncate">
-                        📍 {item.tower_name}
-                      </div>
+                      {item.status_remarks && (
+                        <p className="text-[11px] text-red-600 dark:text-red-500 font-bold leading-relaxed break-words">
+                          {item.status_remarks}
+                        </p>
+                      )}
 
                       {/* Footer */}
                       <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2 text-[11px]">

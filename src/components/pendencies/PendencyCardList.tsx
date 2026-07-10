@@ -93,11 +93,11 @@ export function PendencyCardList({ items, onSelectItem, onUpdateCBE, onUpdateSta
             onClick={() => onSelectItem(item)}
             className={`group relative rounded-xl border border-border ${borderClass} ${bgTint} p-4 shadow-2xs hover:shadow-md hover:border-primary/40 transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-3`}
           >
-            {/* Top Row: ID + Type Badge + Criticality */}
+            {/* Top Row: Department + Type Badge + Criticality */}
             <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2">
-                <span className="font-mono font-bold text-foreground bg-background px-1.5 py-0.5 rounded border border-border">
-                  #{item.human_readable_id}
+                <span className="font-bold text-foreground bg-background px-1.5 py-0.5 rounded border border-border truncate max-w-[150px]">
+                  {item.department_name}
                 </span>
                 <span className="font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded text-[11px] truncate max-w-[120px]">
                   {item.type_name}
@@ -105,7 +105,7 @@ export function PendencyCardList({ items, onSelectItem, onUpdateCBE, onUpdateSta
               </div>
 
               <span
-                className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
                   item.criticality === 'critical'
                     ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400'
                     : 'bg-blue-500/15 text-blue-700 dark:text-blue-400'
@@ -116,13 +116,15 @@ export function PendencyCardList({ items, onSelectItem, onUpdateCBE, onUpdateSta
             </div>
 
             {/* Pendency Description (Wrapped text as per screen width) */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <p className="font-medium text-foreground text-xs leading-relaxed break-words line-clamp-3 group-hover:text-primary transition-colors">
                 {item.description}
               </p>
-              <p className="text-[11px] text-muted-foreground truncate">
-                {item.department_name} • {item.tower_name}
-              </p>
+              {item.status_remarks && (
+                <p className="text-[11px] text-red-600 dark:text-red-500 font-bold leading-relaxed break-words">
+                  {item.status_remarks}
+                </p>
+              )}
             </div>
 
             {/* Card Footer: CBE Date + Age (Days Open) + Status Toggle */}

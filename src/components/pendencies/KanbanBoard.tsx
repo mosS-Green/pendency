@@ -56,9 +56,11 @@ export function KanbanBoard({ data, onSelectItem, onToggleStatus }: Props) {
                   className="rounded-lg border border-border bg-card p-3 shadow-2xs space-y-2 hover:border-primary/50 transition-colors cursor-pointer text-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-foreground">#{item.human_readable_id}</span>
+                    <span className="font-bold text-foreground truncate max-w-[120px] bg-muted px-1.5 py-0.5 rounded text-[11px]">
+                      {item.department_name}
+                    </span>
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
                         item.criticality === 'critical'
                           ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400'
                           : 'bg-blue-500/15 text-blue-700 dark:text-blue-400'
@@ -70,8 +72,13 @@ export function KanbanBoard({ data, onSelectItem, onToggleStatus }: Props) {
 
                   <p className="font-medium text-foreground line-clamp-2 leading-snug">{item.description}</p>
 
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/60">
-                    <span className="truncate">{item.tower_name}</span>
+                  {item.status_remarks && (
+                    <p className="text-[11px] text-red-600 dark:text-red-500 font-bold leading-relaxed break-words">
+                      {item.status_remarks}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-end text-[11px] text-muted-foreground pt-1 border-t border-border/60">
                     <div className="flex items-center gap-1 font-mono">
                       <Calendar className="w-3 h-3" />
                       <span>{item.current_cbe_date || 'Awaiting'}</span>

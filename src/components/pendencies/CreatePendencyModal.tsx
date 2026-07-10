@@ -49,35 +49,117 @@ export function CreatePendencyModal({
     const defaultProject = projects[0] || { id: 'c0000000-0000-0000-0000-000000000001', name: 'Woods' };
 
     // 1. Resolve or Create Tower from text input
-    let targetTowerId = towers[0]?.id;
+    let targetTowerId = null;
     const towerInputStr = formData.tower_name.trim() || 'General';
     const matchedTower = towers.find((t) => t.name.toLowerCase() === towerInputStr.toLowerCase());
 
-    if (matchedTower) {
+    if (matchedTower && !matchedTower.id.startsWith('local-')) {
       targetTowerId = matchedTower.id;
     } else {
-      const { data: newTower } = await supabase
+      // Not in DB or is local tag, check DB directly to be sure
+      const { data: existingTower } = await supabase
         .from('towers')
-        .insert({ project_id: defaultProject.id, name: towerInputStr })
-        .select()
-        .single();
-      if (newTower) targetTowerId = newTower.id;
+        .select('id')
+        .eq('project_id', defaultProject.id)
+        .ilike('name', towerInputStr);
+
+      if (existingTower && existingTower.length > 0) {
+        targetTowerId = existingTower[0].id;
+      } else {
+        const { data: newTower } = await supabase
+          .from('towers')
+          .insert({ project_id: defaultProject.id, name: towerInputStr })
+          .select()
+          .single();
+        if (newTower) {
+          targetTowerId = newTower.id;
+        } else {
+          // Retry query in case of concurrency or previous insert
+          const { data: retryTower } = await supabase
+            .from('towers')
+            .select('id')
+            .eq('project_id', defaultProject.id)
+            .ilike('name', towerInputStr);
+          if (retryTower && retryTower.length > 0) {
+            targetTowerId = retryTower[0].id;
+          }
+        }
+      }
+    }
+
+    // Save tower/location to localStorage tags
+    if (towerInputStr && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('local_towers');
+        const list = stored ? JSON.parse(stored) : [];
+        if (!list.some((name: string) => name.toLowerCase() === towerInputStr.toLowerCase())) {
+          list.push(towerInputStr);
+          localStorage.setItem('local_towers', JSON.stringify(list));
+        }
+      } catch (err) {
+        console.error('Error saving local tower tag:', err);
+      }
     }
 
     // 2. Resolve or Create Pendency Type from text input
-    let targetTypeId = types[0]?.id;
+    let targetTypeId = null;
     const typeInputStr = formData.type_name.trim() || 'General';
     const matchedType = types.find((tp) => tp.name.toLowerCase() === typeInputStr.toLowerCase());
 
-    if (matchedType) {
+    if (matchedType && !matchedType.id.startsWith('local-')) {
       targetTypeId = matchedType.id;
     } else {
-      const { data: newType } = await supabase
+      // Not in DB or is local tag, check DB directly
+      const { data: existingType } = await supabase
         .from('pendency_types')
-        .insert({ name: typeInputStr })
-        .select()
-        .single();
-      if (newType) targetTypeId = newType.id;
+        .select('id')
+        .ilike('name', typeInputStr);
+
+      if (existingType && existingType.length > 0) {
+        targetTypeId = existingType[0].id;
+      } else {
+        const { data: newType } = await supabase
+          .from('pendency_types')
+          .insert({ name: typeInputStr })
+          .select()
+          .single();
+        if (newType) {
+          targetTypeId = newType.id;
+        } else {
+          // Retry query
+          const { data: retryType } = await supabase
+            .from('pendency_types')
+            .select('id')
+            .ilike('name', typeInputStr);
+          if (retryType && retryType.length > 0) {
+            targetTypeId = retryType[0].id;
+          }
+        }
+      }
+    }
+
+    // Save type to localStorage tags
+    if (typeInputStr && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('local_pendency_types');
+        const list = stored ? JSON.parse(stored) : [];
+        if (!list.some((name: string) => name.toLowerCase() === typeInputStr.toLowerCase())) {
+          list.push(typeInputStr);
+          localStorage.setItem('local_pendency_types', JSON.stringify(list));
+        }
+      } catch (err) {
+        console.error('Error saving local type tag:', err);
+      }
+    }
+
+    // Fallbacks to prevent null foreign keys
+    if (!targetTowerId) {
+      const fallbackTower = towers.find((t) => !t.id.startsWith('local-'));
+      targetTowerId = fallbackTower ? fallbackTower.id : towers[0]?.id;
+    }
+    if (!targetTypeId) {
+      const fallbackType = types.find((t) => !t.id.startsWith('local-'));
+      targetTypeId = fallbackType ? fallbackType.id : types[0]?.id;
     }
 
     const result = await onCreate({

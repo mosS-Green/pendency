@@ -68,33 +68,107 @@ export function PendencyDetail({
 
     // Resolve or Auto-create Tower
     let targetTowerId = formData.tower_id;
-    if (towerInput.trim() && towerInput.trim().toLowerCase() !== (pendency.tower_name || '').toLowerCase()) {
-      const matched = towers.find((t) => t.name.toLowerCase() === towerInput.trim().toLowerCase());
-      if (matched) {
+    const towerInputStr = towerInput.trim();
+    if (towerInputStr && towerInputStr.toLowerCase() !== (pendency.tower_name || '').toLowerCase()) {
+      const matched = towers.find((t) => t.name.toLowerCase() === towerInputStr.toLowerCase());
+      if (matched && !matched.id.startsWith('local-')) {
         targetTowerId = matched.id;
       } else {
-        const { data: newTower } = await supabase
+        // Search DB by name
+        const { data: existingTower } = await supabase
           .from('towers')
-          .insert({ project_id: pendency.project_id, name: towerInput.trim() })
-          .select()
-          .single();
-        if (newTower) targetTowerId = newTower.id;
+          .select('id')
+          .eq('project_id', pendency.project_id)
+          .ilike('name', towerInputStr);
+
+        if (existingTower && existingTower.length > 0) {
+          targetTowerId = existingTower[0].id;
+        } else {
+          const { data: newTower } = await supabase
+            .from('towers')
+            .insert({ project_id: pendency.project_id, name: towerInputStr })
+            .select()
+            .single();
+          if (newTower) {
+            targetTowerId = newTower.id;
+          } else {
+            // Retry
+            const { data: retryTower } = await supabase
+              .from('towers')
+              .select('id')
+              .eq('project_id', pendency.project_id)
+              .ilike('name', towerInputStr);
+            if (retryTower && retryTower.length > 0) {
+              targetTowerId = retryTower[0].id;
+            }
+          }
+        }
+      }
+
+      // Save locally
+      if (towerInputStr && typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('local_towers');
+          const list = stored ? JSON.parse(stored) : [];
+          if (!list.some((name: string) => name.toLowerCase() === towerInputStr.toLowerCase())) {
+            list.push(towerInputStr);
+            localStorage.setItem('local_towers', JSON.stringify(list));
+          }
+        } catch (err) {
+          console.error(err);
+        }
       }
     }
 
     // Resolve or Auto-create Type
     let targetTypeId = formData.type_id;
-    if (typeInput.trim() && typeInput.trim().toLowerCase() !== (pendency.type_name || '').toLowerCase()) {
-      const matched = types.find((tp) => tp.name.toLowerCase() === typeInput.trim().toLowerCase());
-      if (matched) {
+    const typeInputStr = typeInput.trim();
+    if (typeInputStr && typeInputStr.toLowerCase() !== (pendency.type_name || '').toLowerCase()) {
+      const matched = types.find((tp) => tp.name.toLowerCase() === typeInputStr.toLowerCase());
+      if (matched && !matched.id.startsWith('local-')) {
         targetTypeId = matched.id;
       } else {
-        const { data: newType } = await supabase
+        // Search DB
+        const { data: existingType } = await supabase
           .from('pendency_types')
-          .insert({ name: typeInput.trim() })
-          .select()
-          .single();
-        if (newType) targetTypeId = newType.id;
+          .select('id')
+          .ilike('name', typeInputStr);
+
+        if (existingType && existingType.length > 0) {
+          targetTypeId = existingType[0].id;
+        } else {
+          const { data: newType } = await supabase
+            .from('pendency_types')
+            .insert({ name: typeInputStr })
+            .select()
+            .single();
+          if (newType) {
+            targetTypeId = newType.id;
+          } else {
+            // Retry
+            const { data: retryType } = await supabase
+              .from('pendency_types')
+              .select('id')
+              .ilike('name', typeInputStr);
+            if (retryType && retryType.length > 0) {
+              targetTypeId = retryType[0].id;
+            }
+          }
+        }
+      }
+
+      // Save locally
+      if (typeInputStr && typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('local_pendency_types');
+          const list = stored ? JSON.parse(stored) : [];
+          if (!list.some((name: string) => name.toLowerCase() === typeInputStr.toLowerCase())) {
+            list.push(typeInputStr);
+            localStorage.setItem('local_pendency_types', JSON.stringify(list));
+          }
+        } catch (err) {
+          console.error(err);
+        }
       }
     }
 

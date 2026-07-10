@@ -34,13 +34,18 @@ export function AttentionList({ overdueItems, onSelectItem }: Props) {
               className="group flex items-center justify-between p-2.5 rounded-lg border border-border bg-background hover:bg-muted/60 transition-colors cursor-pointer text-xs"
             >
               <div className="flex items-center gap-2.5 truncate">
-                <span className="font-mono font-bold text-rose-700 dark:text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded">
-                  #{item.human_readable_id}
+                <span className="font-bold text-rose-700 dark:text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded truncate max-w-[100px] text-[11px]">
+                  {item.department_name}
                 </span>
                 <div className="truncate">
                   <p className="font-medium text-foreground truncate">{item.description}</p>
+                  {item.status_remarks && (
+                    <p className="text-[10px] text-red-600 dark:text-red-500 font-bold truncate">
+                      {item.status_remarks}
+                    </p>
+                  )}
                   <p className="text-[10px] text-muted-foreground">
-                    {item.department_name} • {item.tower_name} • Target CBE: {item.current_cbe_date}
+                    Target CBE: {item.current_cbe_date}
                   </p>
                 </div>
               </div>
